@@ -2,12 +2,12 @@
 
 # Ensure correct usage
 if [ "$#" -lt 1 ]; then
-    echo "Usage: ./django <create|delete|run|list-projects|mgmt> [project_name] [mgmt_cmd]"
+    echo "Usage: ./django <create|delete|run|list-projects|mgmt> [project_name].[app_name].[mod_name] [mgmt_cmd]"
     exit 1
 fi
 
 COMMAND=$1
-PROJECT_NAME=$2
+PROJECT_INPUT=$2
 MGMT_CMD=$3  # Used for the 'mgmt' command
 DPM_NAME=django_project_mgmt.py
 DPM_DIR=./automate/bin
@@ -23,24 +23,44 @@ if [ -z "$PROJECT_BASE_DIR" ]; then
     PROJECT_BASE_DIR="env/dev"
     echo "PROJECT_BASE_DIR not found in $CONFIG_FILE. Using default value: $PROJECT_BASE_DIR"
 fi
-
+# Determine if input contains dots (app or module)
+IFS='.' read -r PROJECT_NAME APP_NAME MOD_NAME <<< "$PROJECT_INPUT"
 PROJECT_PATH="$PROJECT_BASE_DIR/$PROJECT_NAME"
+
+# Identify if the input is a project, app, or module
+CREATE_APP="false"
+CREATE_MOD="false"
+
+if [[ -n "$APP_NAME" && -z "$MOD_NAME" ]]; then
+    CREATE_APP="true"
+elif [[ -n "$APP_NAME" && -n "$MOD_NAME" ]]; then
+    CREATE_APP="true"
+    CREATE_MOD="true"
+fi
+
+# echo "PROJECT_NAME: $PROJECT_NAME"
+# echo "PROJECT_PATH: $PROJECT_PATH"
+# echo "PROJECT_BASE_DIR: $PROJECT_BASE_DIR"
+# echo "CREATE_APP: $CREATE_APP"
+# echo "CREATE_MOD: $CREATE_MOD"
+# exit 1
 
 # Validate commands
 if [[ "$COMMAND" != "create" && "$COMMAND" != "delete" && "$COMMAND" != "run" && "$COMMAND" != "list-projects" && "$COMMAND" != "mgmt" ]]; then
     echo "Invalid command: $COMMAND"
-    echo "Usage: ./django <create|delete|run|list-projects|mgmt> [project_name] [mgmt_cmd]"
+    echo "Usage: ./django <create|delete|run|list-projects|mgmt> [project_name].[app_name].[mod_name] [mgmt_cmd]"
     exit 1
 fi
 
 if [ "$COMMAND" == "create" ]; then
-    $PYTHON_EXE $DPM_EXE create "$PROJECT_NAME"
+   # Creating a Django project
+    $PYTHON_EXE $DPM_EXE create "$PROJECT_INPUT"
 
     if [ $? -eq 0 ]; then
-        # Create shortcut scripts
+        # Create shortcut scripts inside the project directory
         echo -e "#!/bin/bash\npython manage.py makemigrations" > "$PROJECT_PATH/m1"
         echo -e "#!/bin/bash\npython manage.py migrate" > "$PROJECT_PATH/m2"
-        echo -e "#!/bin/bash\npython manage.py runserver" > "$PROJECT_PATH/m3"  
+        echo -e "#!/bin/bash\npython manage.py runserver" > "$PROJECT_PATH/m3"
         echo -e "#!/bin/bash\n./m1\n./m2\n./m3" > "$PROJECT_PATH/m123"
 
         # Make scripts executable
@@ -50,18 +70,19 @@ if [ "$COMMAND" == "create" ]; then
     fi
 fi
 
+
 if [ "$COMMAND" == "delete" ]; then
     $PYTHON_EXE $DPM_EXE delete "$PROJECT_NAME"
 fi
 
 if [ "$COMMAND" == "run" ]; then
     if [ ! -d "$PROJECT_PATH" ]; then
-        echo "Error: Django project '$PROJECT_NAME' does not exist."
+        echo "RUN-Error: Django project '$PROJECT_NAME' does not exist."
         exit 1
     fi
 
     if [ ! -f "$PROJECT_PATH/m3" ]; then
-        echo "Error: Shortcut 'm3' not found in $PROJECT_PATH"
+        echo "RUN-Error: Shortcut 'm3' not found in $PROJECT_PATH"
         exit 1
     fi
 
@@ -76,7 +97,7 @@ if [ "$COMMAND" == "mgmt" ]; then
     fi
 
     if [ ! -d "$PROJECT_PATH" ]; then
-        echo "Error: Django project '$PROJECT_NAME' does not exist."
+        echo "MGMT-Error: Django project '$PROJECT_NAME' does not exist."
         exit 1
     fi
 
@@ -84,16 +105,6 @@ if [ "$COMMAND" == "mgmt" ]; then
     
     cd "$PROJECT_PATH"
     python manage.py "$MGMT_CMD"
-fi
-
-if [ "$COMMAND" == "goto" ]; then
-    if [ ! -d "$PROJECT_PATH" ]; then
-        echo "Error: Django project '$PROJECT_NAME' does not exist."
-        exit 1
-    fi
-
-    echo "Run the following command to enter the project directory:"
-    echo "cd \"$PROJECT_PATH\""
 fi
 
 
