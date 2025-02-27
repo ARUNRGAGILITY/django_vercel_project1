@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# This is a basic automation wrapper for running django_project_mgmt.py
+
+# Define the path to the Python script inside automate/bin
+DJANGO_PROJECT_MGMT=./automate/bin/django_project_mgmt.py
+
+# Define the base directory for dev environment
+DEV_BASE_DIR="./env/dev"
+
+# Ensure at least one argument is provided
+if [[ -z "$1" ]]; then
+    echo "❌ Error: Missing command. Usage:"
+    echo "  - To create: ./django create <project_name>[.<app_name>[.<module_name>]]"
+    echo "  - To delete: ./django delete <project_name>"
+    exit 1
+fi
+
+COMMAND="$1"
+shift  # Remove the first argument (command)
+
+# Handle "create" command
+if [[ "$COMMAND" == "create" ]]; then
+    # Ensure a project input is provided
+    if [[ -z "$1" ]]; then
+        echo "❌ Error: Missing project input. Usage: ./django create <project_name>[.<app_name>[.<module_name>]]"
+        exit 1
+    fi
+
+    # Extract components from input
+    IFS='.' read -r -a COMPONENTS <<< "$1"
+
+    PROJECT_NAME="${COMPONENTS[0]}"
+    APP_NAME="${COMPONENTS[1]:-}"  # Default to empty if not provided
+    MODULE_NAME="${COMPONENTS[2]:-}"  # Default to empty if not provided
+
+    # Ensure the project name is valid
+    if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z0-9_]+$ ]]; then
+        echo "❌ Error: Invalid project format. Use <project_name>[.<app_name>[.<module_name>]]"
+        exit 1
+    fi
+
+    # Set the project-specific output directory under env/dev/<project_name>
+    OUTPUT_DIR="$DEV_BASE_DIR/$PROJECT_NAME"
+
+    # Normalize the path
+    OUTPUT_DIR=$(realpath "$OUTPUT_DIR")
+
+    # Ensure the project directory exists
+    mkdir -p "$OUTPUT_DIR"
+
+    # Execute the Python script to create the project, app, and module accordingly
+    if [[ -n "$MODULE_NAME" ]]; then
+        # Project + App + Module
+        python "$DJANGO_PROJECT_MGMT" create "$PROJECT_NAME.$APP_NAME.$MODULE_NAME" --output-dir "$OUTPUT_DIR"
+    elif [[ -n "$APP_NAME" ]]; then
+        # Project + App
+        python "$DJANGO_PROJECT_MGMT" create "$PROJECT_NAME.$APP_NAME" --output-dir "$OUTPUT_DIR"
+    else
+        # Only Project
+        python "$DJANGO_PROJECT_MGMT" create "$PROJECT_NAME" --output-dir "$OUTPUT_DIR"
+    fi
+
+    #echo "✅ Project created successfully inside $OUTPUT_DIR"
+
+    exit 0
+fi
+
+# Handle "delete" command
+if [[ "$COMMAND" == "delete" ]]; then
+    # Ensure a project name is provided
+    if [[ -z "$1" ]]; then
+        echo "❌ Error: Missing project name. Usage: ./django delete <project_name>"
+        exit 1
+    fi
+
+    PROJECT_NAME="$1"
+    PROJECT_DIR="$DEV_BASE_DIR/$PROJECT_NAME"
+
+    # Check if the project directory exists
+    if [[ ! -d "$PROJECT_DIR" ]]; then
+        echo "❌ Error: Project '$PROJECT_NAME' does not exist in $DEV_BASE_DIR."
+        exit 1
+    fi
+
+    # # Ask for confirmation before deleting
+    # read -p "⚠️ Are you sure you want to delete '$PROJECT_NAME'? (y/n): " CONFIRMATION
+    # if [[ "$CONFIRMATION" != "y" && "$CONFIRMATION" != "Y" ]]; then
+    #     echo "✅ Deletion cancelled."
+    #     exit 0
+    # fi
+
+    # Remove the project directory
+    rm -rf "$PROJECT_DIR"
+
+    # Confirm deletion
+    if [[ ! -d "$PROJECT_DIR" ]]; then
+        echo "✅ Project '$PROJECT_NAME' has been successfully deleted from $DEV_BASE_DIR."
+    else
+        echo "❌ Error: Failed to delete '$PROJECT_NAME'."
+        exit 1
+    fi
+
+    exit 0
+fi
+
+# If an invalid command is given
+echo "❌ Error: Invalid command '$COMMAND'. Usage:"
+echo "  - To create: ./django create <project_name>[.<app_name>[.<module_name>]]"
+echo "  - To delete: ./django delete <project_name>"
+exit 1
