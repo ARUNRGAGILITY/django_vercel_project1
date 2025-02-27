@@ -43,10 +43,6 @@ if [ "$COMMAND" == "create" ]; then
         echo -e "#!/bin/bash\npython manage.py runserver" > "$PROJECT_PATH/m3"  
         echo -e "#!/bin/bash\n./m1\n./m2\n./m3" > "$PROJECT_PATH/m123"
 
-        echo -e "#!/bin/bash\n\nif [ \"\$#\" -ne 1 ]; then\n    echo \"Usage: . ./goto <project_name>\"\nelse\n\n    PROJECT_NAME=\$1\n    PROJECT_BASE_DIR=\"$PROJECT_BASE_DIR\"\n    PROJECT_PATH=\"\$PROJECT_BASE_DIR/\$PROJECT_NAME\"\n\n    if [ ! -d \"\$PROJECT_PATH\" ]; then\n        echo \"Error: Project '\$PROJECT_NAME' does not exist.\"\n        \n    else\n        cd \"\$PROJECT_PATH\"\n    fi\n\nfi" > "./goto"
-
-        chmod +x ./goto
-
         # Make scripts executable
         chmod +x "$PROJECT_PATH/m1" "$PROJECT_PATH/m2" "$PROJECT_PATH/m3" "$PROJECT_PATH/m123"
 
