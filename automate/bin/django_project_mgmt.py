@@ -11,7 +11,6 @@ APP_PREFIX = config.get("apps", "app_prefix", fallback="app")  # Default to "app
 APP_FILES = config.get("apps", "app_files", fallback="no")  # Default to "no" if missing
 MOD_PREFIX = config.get("modules", "mod_prefix", fallback="mod")  # Default to "mod_" if missing
 ########################################### PROJECT RELATED ########################################################
-
 def create_django_project(project_name, base_dir):
     """Create a new Django project if it doesn't already exist."""
     project_path = os.path.join(base_dir, project_name)
@@ -23,7 +22,7 @@ def create_django_project(project_name, base_dir):
     os.makedirs(project_path, exist_ok=True)
     subprocess.run(["django-admin", "startproject", f"project_{project_name}", project_path])
     print(f"Django project '{project_name}' created successfully in '{project_path}'")
-
+########################################### APP RELATED ########################################################
 def create_django_app(project_name, app_name, base_dir):
     """Create a new Django app inside an existing project."""
     app_name = app_name.lower()
@@ -39,11 +38,19 @@ def create_django_app(project_name, app_name, base_dir):
     if os.path.exists(app_path):
         print(f"Warning: Django app '{app_name}' already exists inside project '{project_name}'. Skipping app creation.")
         return  # Do not exit, just return
+    
 
     os.chdir(project_path)
     subprocess.run(["python", "manage.py", "startapp", app_name])
-    print(f"Django app '{app_name}' created successfully inside '{project_name}'.")
 
+    if APP_FILES == "yes":
+        print(f">>> === REMOVE THE DEFAULT FILES CREATED IN APP FOLDER === <<<")
+        app_files = ["models.py", "tests.py", "views.py"]
+        for file in app_files:
+            os.remove(os.path.join(app_path, file))
+        print(f">>> === REMOVE THE DEFAULT FILES CREATED IN APP FOLDER === <<<")
+    print(f"Django app '{app_name}' created successfully inside '{project_name}'.")
+########################################### MODULE RELATED ########################################################
 def create_module(project_name, app_name, mod_name, base_dir):
     """Ensure project and app exist before creating a module inside an app."""
     app_name = app_name.lower()
