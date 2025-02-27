@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# This is a basic automation wrapper for running django_project_mgmt.py
-
-# Define the path to the Python script inside automate/bin
-DJANGO_PROJECT_MGMT=./automate/bin/django_project_mgmt.py
-
 # Define the base directory for dev environment
 DEV_BASE_DIR="./env/dev"
 
@@ -13,6 +8,7 @@ if [[ -z "$1" ]]; then
     echo "❌ Error: Missing command. Usage:"
     echo "  - To create: ./django create <project_name>[.<app_name>[.<module_name>]]"
     echo "  - To delete: ./django delete <project_name>"
+    echo "  - To run: ./django run <project_name>"
     exit 1
 fi
 
@@ -21,7 +17,7 @@ shift  # Remove the first argument (command)
 
 # Handle "create" command
 if [[ "$COMMAND" == "create" ]]; then
-    # Ensure a project input is provided
+    # Ensure a project name is provided
     if [[ -z "$1" ]]; then
         echo "❌ Error: Missing project input. Usage: ./django create <project_name>[.<app_name>[.<module_name>]]"
         exit 1
@@ -43,25 +39,35 @@ if [[ "$COMMAND" == "create" ]]; then
     # Set the project-specific output directory under env/dev/<project_name>
     OUTPUT_DIR="$DEV_BASE_DIR/$PROJECT_NAME"
 
-    # Normalize the path
-    OUTPUT_DIR=$(realpath "$OUTPUT_DIR")
-
-    # Ensure the project directory exists
+    # Ensure the directory exists before proceeding
     mkdir -p "$OUTPUT_DIR"
+    #echo "📁 Created project directory: $OUTPUT_DIR"
+    
+    # Check if the directory was created successfully
+    if [[ ! -d "$OUTPUT_DIR" ]]; then
+        echo "❌ Error: Failed to create '$OUTPUT_DIR'. Please check permissions."
+        exit 1
+    fi
 
     # Execute the Python script to create the project, app, and module accordingly
     if [[ -n "$MODULE_NAME" ]]; then
         # Project + App + Module
-        python "$DJANGO_PROJECT_MGMT" create "$PROJECT_NAME.$APP_NAME.$MODULE_NAME" --output-dir "$OUTPUT_DIR"
+        python "./automate/bin/django_project_mgmt.py" create "$PROJECT_NAME.$APP_NAME.$MODULE_NAME" --output-dir "$OUTPUT_DIR"
     elif [[ -n "$APP_NAME" ]]; then
         # Project + App
-        python "$DJANGO_PROJECT_MGMT" create "$PROJECT_NAME.$APP_NAME" --output-dir "$OUTPUT_DIR"
+        python "./automate/bin/django_project_mgmt.py" create "$PROJECT_NAME.$APP_NAME" --output-dir "$OUTPUT_DIR"
     else
         # Only Project
-        python "$DJANGO_PROJECT_MGMT" create "$PROJECT_NAME" --output-dir "$OUTPUT_DIR"
+        python "./automate/bin/django_project_mgmt.py" create "$PROJECT_NAME" --output-dir "$OUTPUT_DIR"
     fi
 
-    #echo "✅ Project created successfully inside $OUTPUT_DIR"
+    # Final directory check
+    if [[ ! -d "$OUTPUT_DIR" ]]; then
+        echo "❌ Error: Project directory '$OUTPUT_DIR' does not exist after creation."
+        exit 1
+    fi
+
+    echo "✅ Project '$PROJECT_NAME' created successfully in $OUTPUT_DIR."
 
     exit 0
 fi
@@ -83,13 +89,6 @@ if [[ "$COMMAND" == "delete" ]]; then
         exit 1
     fi
 
-    # # Ask for confirmation before deleting
-    # read -p "⚠️ Are you sure you want to delete '$PROJECT_NAME'? (y/n): " CONFIRMATION
-    # if [[ "$CONFIRMATION" != "y" && "$CONFIRMATION" != "Y" ]]; then
-    #     echo "✅ Deletion cancelled."
-    #     exit 0
-    # fi
-
     # Remove the project directory
     rm -rf "$PROJECT_DIR"
 
@@ -104,8 +103,58 @@ if [[ "$COMMAND" == "delete" ]]; then
     exit 0
 fi
 
+# Handle "run" command
+if [[ "$COMMAND" == "run" ]]; then
+    # Ensure a project name is provided
+    if [[ -z "$1" ]]; then
+        echo "❌ Error: Missing project name. Usage: ./django run <project_name>"
+        exit 1
+    fi
+
+    PROJECT_NAME="$1"
+    PROJECT_DIR="$DEV_BASE_DIR/$PROJECT_NAME"
+
+    # Check if the project directory exists
+    if [[ ! -d "$PROJECT_DIR" ]]; then
+        echo "❌ Error: Project '$PROJECT_NAME' does not exist in $DEV_BASE_DIR."
+        exit 1
+    fi
+
+    # Move to the project directory
+    cd "$PROJECT_DIR" || { echo "❌ Error: Could not enter '$PROJECT_DIR'."; exit 1; }
+
+    # Create helper bash scripts
+    echo "#!/bin/bash" > m1
+    echo "python manage.py makemigrations" >> m1
+    chmod +x m1
+
+    echo "#!/bin/bash" > m2
+    echo "python manage.py migrate" >> m2
+    chmod +x m2
+
+    echo "#!/bin/bash" > m3
+    echo "python manage.py runserver" >> m3
+    chmod +x m3
+
+    echo "#!/bin/bash" > mgmt_cmd
+    echo "python manage.py \"\$@\"" >> mgmt_cmd
+    chmod +x mgmt_cmd
+
+    echo "✅ Helper scripts created:"
+    echo "  - m1: Runs 'makemigrations'"
+    echo "  - m2: Runs 'migrate'"
+    echo "  - m3: Runs 'runserver'"
+    echo "  - mgmt_cmd: Runs any Django management command"
+
+    # Start Django server
+    ./m3
+
+    exit 0
+fi
+
 # If an invalid command is given
 echo "❌ Error: Invalid command '$COMMAND'. Usage:"
 echo "  - To create: ./django create <project_name>[.<app_name>[.<module_name>]]"
 echo "  - To delete: ./django delete <project_name>"
+echo "  - To run: ./django run <project_name>"
 exit 1
