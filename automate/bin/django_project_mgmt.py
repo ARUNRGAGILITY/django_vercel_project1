@@ -3,6 +3,7 @@ import sys
 import subprocess
 import shutil
 import configparser
+import time 
 # Load configuration from config.ini
 config = configparser.ConfigParser()
 config.read("../../config.ini")
@@ -26,7 +27,11 @@ def create_django_project(project_name, base_dir):
 def create_django_app(project_name, app_name, base_dir):
     """Create a new Django app inside an existing project."""
     app_name = app_name.lower()
-    app_name = f"{APP_PREFIX}_{app_name}"  # Add prefix to app name
+    # Add prefix to app name
+    # Ensure "app_" is only added once
+    if not app_name.startswith(f"{APP_PREFIX}_"):
+        app_name = f"{APP_PREFIX}_{app_name}"
+
     project_path = os.path.join(base_dir, project_name)
     app_path = os.path.join(project_path, app_name)
 
@@ -42,13 +47,29 @@ def create_django_app(project_name, app_name, base_dir):
 
     os.chdir(project_path)
     subprocess.run(["python", "manage.py", "startapp", app_name])
+    
+    # ✅ Ensure the app folder has been created
+    if not os.path.exists(app_name):
+        print(f"Error: The app directory '{app_path}' was not created.")
+        sys.exit(1)
 
-    if APP_FILES == "yes":
+    # ✅ List the contents of the app directory for debugging
+    print(f">>> === CHECKING FILES IN APP DIRECTORY '{app_name}' === <<<")
+    app_contents = os.listdir(app_name)
+    print(f"Contents: {app_contents}")
+
+    if APP_FILES == "no":
         print(f">>> === REMOVE THE DEFAULT FILES CREATED IN APP FOLDER === <<<")
         app_files = ["models.py", "tests.py", "views.py"]
+        
         for file in app_files:
-            os.remove(os.path.join(app_path, file))
-        print(f">>> === REMOVE THE DEFAULT FILES CREATED IN APP FOLDER === <<<")
+            to_be_removed = os.path.join(app_name, file)
+            
+            if os.path.exists(to_be_removed):
+                os.remove(to_be_removed)
+                print(f">>> === FILE EXISTS: {to_be_removed} === <<<")
+            else:
+                print(f">>> === FILE NOT FOUND: {to_be_removed} === <<<")
     print(f"Django app '{app_name}' created successfully inside '{project_name}'.")
 ########################################### MODULE RELATED ########################################################
 def create_module(project_name, app_name, mod_name, base_dir):
