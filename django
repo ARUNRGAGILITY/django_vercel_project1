@@ -1,160 +1,53 @@
 #!/bin/bash
 
-# Define the base directory for dev environment
-DEV_BASE_DIR="./env/dev"
-
-# Ensure at least one argument is provided
-if [[ -z "$1" ]]; then
-    echo "❌ Error: Missing command. Usage:"
-    echo "  - To create: ./django create <project_name>[.<app_name>[.<module_name>]]"
-    echo "  - To delete: ./django delete <project_name>"
-    echo "  - To run: ./django run <project_name>"
+# Ensure correct usage
+if [ "$#" -ne 2 ]; then
+    echo "Usage: ./django <create|delete|run> <project_name>"
     exit 1
 fi
 
-COMMAND="$1"
-shift  # Remove the first argument (command)
+COMMAND=$1
+PROJECT_NAME=$2
+DPM_NAME=django_project_mgmt.py
+DPM_DIR=./automate/bin
+DPM_EXE=$DPM_DIR/$DPM_NAME
+PYTHON_EXE=python
+PROJECT_PATH="env/dev/$PROJECT_NAME"
 
-# Handle "create" command
-if [[ "$COMMAND" == "create" ]]; then
-    # Ensure a project name is provided
-    if [[ -z "$1" ]]; then
-        echo "❌ Error: Missing project input. Usage: ./django create <project_name>[.<app_name>[.<module_name>]]"
-        exit 1
-    fi
-
-    # Extract components from input
-    IFS='.' read -r -a COMPONENTS <<< "$1"
-
-    PROJECT_NAME="${COMPONENTS[0]}"
-    APP_NAME="${COMPONENTS[1]:-}"  # Default to empty if not provided
-    MODULE_NAME="${COMPONENTS[2]:-}"  # Default to empty if not provided
-
-    # Ensure the project name is valid
-    if [[ ! "$PROJECT_NAME" =~ ^[a-zA-Z0-9_]+$ ]]; then
-        echo "❌ Error: Invalid project format. Use <project_name>[.<app_name>[.<module_name>]]"
-        exit 1
-    fi
-
-    # Set the project-specific output directory under env/dev/<project_name>
-    OUTPUT_DIR="$DEV_BASE_DIR/$PROJECT_NAME"
-
-    # Ensure the directory exists before proceeding
-    mkdir -p "$OUTPUT_DIR"
-    #echo "📁 Created project directory: $OUTPUT_DIR"
-    
-    # Check if the directory was created successfully
-    if [[ ! -d "$OUTPUT_DIR" ]]; then
-        echo "❌ Error: Failed to create '$OUTPUT_DIR'. Please check permissions."
-        exit 1
-    fi
-
-    # Execute the Python script to create the project, app, and module accordingly
-    if [[ -n "$MODULE_NAME" ]]; then
-        # Project + App + Module
-        python "./automate/bin/django_project_mgmt.py" create "$PROJECT_NAME.$APP_NAME.$MODULE_NAME" --output-dir "$OUTPUT_DIR"
-    elif [[ -n "$APP_NAME" ]]; then
-        # Project + App
-        python "./automate/bin/django_project_mgmt.py" create "$PROJECT_NAME.$APP_NAME" --output-dir "$OUTPUT_DIR"
-    else
-        # Only Project
-        python "./automate/bin/django_project_mgmt.py" create "$PROJECT_NAME" --output-dir "$OUTPUT_DIR"
-    fi
-
-    # Final directory check
-    if [[ ! -d "$OUTPUT_DIR" ]]; then
-        echo "❌ Error: Project directory '$OUTPUT_DIR' does not exist after creation."
-        exit 1
-    fi
-
-    echo "✅ Project '$PROJECT_NAME' created successfully in $OUTPUT_DIR."
-
-    exit 0
+# Validate commands
+if [[ "$COMMAND" != "create" && "$COMMAND" != "delete" && "$COMMAND" != "run" ]]; then
+    echo "Invalid command: $COMMAND"
+    echo "Usage: ./django <create|delete|run> <project_name>"
+    exit 1
 fi
 
-# Handle "delete" command
-if [[ "$COMMAND" == "delete" ]]; then
-    # Ensure a project name is provided
-    if [[ -z "$1" ]]; then
-        echo "❌ Error: Missing project name. Usage: ./django delete <project_name>"
-        exit 1
+if [ "$COMMAND" == "create" ]; then
+    $PYTHON_EXE $DPM_EXE create "$PROJECT_NAME"
+
+    # If creation succeeds, create the 'm3' shortcut script inside the project directory
+    if [ $? -eq 0 ]; then
+        echo -e "#!/bin/bash\npython manage.py runserver" > "$PROJECT_PATH/m3"
+        chmod +x "$PROJECT_PATH/m3"
+        echo "Shortcut 'm3' created in $PROJECT_PATH"
     fi
-
-    PROJECT_NAME="$1"
-    PROJECT_DIR="$DEV_BASE_DIR/$PROJECT_NAME"
-
-    # Check if the project directory exists
-    if [[ ! -d "$PROJECT_DIR" ]]; then
-        echo "❌ Error: Project '$PROJECT_NAME' does not exist in $DEV_BASE_DIR."
-        exit 1
-    fi
-
-    # Remove the project directory
-    rm -rf "$PROJECT_DIR"
-
-    # Confirm deletion
-    if [[ ! -d "$PROJECT_DIR" ]]; then
-        echo "✅ Project '$PROJECT_NAME' has been successfully deleted from $DEV_BASE_DIR."
-    else
-        echo "❌ Error: Failed to delete '$PROJECT_NAME'."
-        exit 1
-    fi
-
-    exit 0
 fi
 
-# Handle "run" command
-if [[ "$COMMAND" == "run" ]]; then
-    # Ensure a project name is provided
-    if [[ -z "$1" ]]; then
-        echo "❌ Error: Missing project name. Usage: ./django run <project_name>"
+if [ "$COMMAND" == "delete" ]; then
+    $PYTHON_EXE $DPM_EXE delete "$PROJECT_NAME"
+fi
+
+if [ "$COMMAND" == "run" ]; then
+    if [ ! -d "$PROJECT_PATH" ]; then
+        echo "Error: Django project '$PROJECT_NAME' does not exist."
         exit 1
     fi
 
-    PROJECT_NAME="$1"
-    PROJECT_DIR="$DEV_BASE_DIR/$PROJECT_NAME"
-
-    # Check if the project directory exists
-    if [[ ! -d "$PROJECT_DIR" ]]; then
-        echo "❌ Error: Project '$PROJECT_NAME' does not exist in $DEV_BASE_DIR."
+    if [ ! -f "$PROJECT_PATH/m3" ]; then
+        echo "Error: Shortcut 'm3' not found in $PROJECT_PATH"
         exit 1
     fi
 
-    # Move to the project directory
-    cd "$PROJECT_DIR" || { echo "❌ Error: Could not enter '$PROJECT_DIR'."; exit 1; }
-
-    # Create helper bash scripts
-    echo "#!/bin/bash" > m1
-    echo "python manage.py makemigrations" >> m1
-    chmod +x m1
-
-    echo "#!/bin/bash" > m2
-    echo "python manage.py migrate" >> m2
-    chmod +x m2
-
-    echo "#!/bin/bash" > m3
-    echo "python manage.py runserver" >> m3
-    chmod +x m3
-
-    echo "#!/bin/bash" > mgmt_cmd
-    echo "python manage.py \"\$@\"" >> mgmt_cmd
-    chmod +x mgmt_cmd
-
-    echo "✅ Helper scripts created:"
-    echo "  - m1: Runs 'makemigrations'"
-    echo "  - m2: Runs 'migrate'"
-    echo "  - m3: Runs 'runserver'"
-    echo "  - mgmt_cmd: Runs any Django management command"
-
-    # Start Django server
+    # Change directory and run the shortcut script
+    cd "$PROJECT_PATH"
     ./m3
-
-    exit 0
 fi
-
-# If an invalid command is given
-echo "❌ Error: Invalid command '$COMMAND'. Usage:"
-echo "  - To create: ./django create <project_name>[.<app_name>[.<module_name>]]"
-echo "  - To delete: ./django delete <project_name>"
-echo "  - To run: ./django run <project_name>"
-exit 1
