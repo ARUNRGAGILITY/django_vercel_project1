@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Ensure correct usage
-if [ "$#" -ne 2 ]; then
-    echo "Usage: ./django <create|delete|run> <project_name>"
+if [ "$#" -lt 1 ]; then
+    echo "Usage: ./django <create|delete|run|list-projects> [project_name]"
     exit 1
 fi
 
@@ -12,19 +12,29 @@ DPM_NAME=django_project_mgmt.py
 DPM_DIR=./automate/bin
 DPM_EXE=$DPM_DIR/$DPM_NAME
 PYTHON_EXE=python
-PROJECT_PATH="env/dev/$PROJECT_NAME"
+
+# Read PROJECT_BASE_DIR from config.ini
+CONFIG_FILE=./config.ini
+PROJECT_BASE_DIR=$(awk -F' *= *' '$1=="PROJECT_BASE_DIR"{print $2}' "$CONFIG_FILE")
+
+# Fallback to default if config.ini is missing
+if [ -z "$PROJECT_BASE_DIR" ]; then
+    PROJECT_BASE_DIR="env/dev"
+    echo "PROJECT_BASE_DIR not found in $CONFIG_FILE. Using default value: $PROJECT_BASE_DIR"
+fi
+
+PROJECT_PATH="$PROJECT_BASE_DIR/$PROJECT_NAME"
 
 # Validate commands
-if [[ "$COMMAND" != "create" && "$COMMAND" != "delete" && "$COMMAND" != "run" ]]; then
+if [[ "$COMMAND" != "create" && "$COMMAND" != "delete" && "$COMMAND" != "run" && "$COMMAND" != "list-projects" ]]; then
     echo "Invalid command: $COMMAND"
-    echo "Usage: ./django <create|delete|run> <project_name>"
+    echo "Usage: ./django <create|delete|run|list-projects> [project_name]"
     exit 1
 fi
 
 if [ "$COMMAND" == "create" ]; then
     $PYTHON_EXE $DPM_EXE create "$PROJECT_NAME"
 
-    # If creation succeeds, create the 'm3' shortcut script inside the project directory
     if [ $? -eq 0 ]; then
         echo -e "#!/bin/bash\npython manage.py runserver" > "$PROJECT_PATH/m3"
         chmod +x "$PROJECT_PATH/m3"
@@ -47,7 +57,23 @@ if [ "$COMMAND" == "run" ]; then
         exit 1
     fi
 
-    # Change directory and run the shortcut script
     cd "$PROJECT_PATH"
     ./m3
+fi
+
+# LIST PROJECTS
+if [ "$COMMAND" == "list-projects" ]; then
+    if [ ! -d "$PROJECT_BASE_DIR" ]; then
+        echo "Error: Base directory '$PROJECT_BASE_DIR' does not exist."
+        exit 1
+    fi
+
+    # Count the number of directories (projects) inside the base directory
+    PROJECT_COUNT=$(find "$PROJECT_BASE_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
+    
+    echo "Total Django projects in '$PROJECT_BASE_DIR': $PROJECT_COUNT"
+    
+    # List all directories inside the base directory
+    #echo "Projects in '$PROJECT_BASE_DIR':"
+    ls -d "$PROJECT_BASE_DIR"/* 2>/dev/null | xargs -n 1 basename
 fi

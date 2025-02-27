@@ -2,10 +2,16 @@ import os
 import sys
 import subprocess
 import shutil
+import configparser
+
+# Load configuration from config.ini
+config = configparser.ConfigParser()
+config.read("config.ini")
+PROJECT_BASE_DIR = config.get("paths", "PROJECT_BASE_DIR", fallback="env/dev")  # Default to "env/dev" if missing
 
 def create_django_project(project_name):
     """Create a new Django project."""
-    project_path = os.path.join("env", "dev", project_name)
+    project_path = os.path.join(PROJECT_BASE_DIR, project_name)
     
     # Create directories if they don't exist
     os.makedirs(project_path, exist_ok=True)
@@ -17,14 +23,13 @@ def create_django_project(project_name):
 
 def delete_django_project(project_name):
     """Delete an existing Django project."""
-    project_path = os.path.join("env", "dev", project_name)
+    project_path = os.path.join(PROJECT_BASE_DIR, project_name)
 
     if os.path.exists(project_path):
         shutil.rmtree(project_path)
         print(f"Django project '{project_name}' deleted successfully.")
     else:
         print(f"Error: Django project '{project_name}' does not exist.")
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -38,7 +43,6 @@ if __name__ == "__main__":
         create_django_project(project_name)
     elif command == "delete":
         delete_django_project(project_name)
-    
     else:
         print("Invalid command. Use: create, delete, or run.")
         sys.exit(1)
