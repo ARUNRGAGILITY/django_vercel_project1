@@ -1,0 +1,30 @@
+
+def create_module(project_name, app_name, mod_name, base_dir):
+    """Ensure project and app exist before creating a module inside an app."""
+    app_name = app_name.lower()
+    app_name = f"{APP_PREFIX}_{app_name}"  # Add prefix to app
+    # print(f">>> === CHECKING THE APP NAME {app_name} === <<<")
+    mod_name = mod_name.lower()
+    mod_name = f"{MOD_PREFIX}_{mod_name}"  # Add prefix to module name
+    project_path = os.path.join(base_dir, project_name)
+    app_path = os.path.join(project_path, app_name)
+    mod_path = os.path.join(app_path, mod_name)
+
+    # Ensure project exists first
+    if not os.path.exists(project_path):
+        print(f"Warning: Django project '{project_name}' does not exist. Creating project first.")
+        create_django_project(project_name, base_dir)
+
+    # Ensure app exists first
+    if not os.path.exists(app_path):
+        print(f"Warning: Django app '{app_name}' does not exist. Creating app first.")
+        create_django_app(project_name, app_name, base_dir)
+
+    # Ensure module does not already exist
+    if os.path.exists(mod_path):
+        print(f"Error: Module '{mod_name}' already exists inside app '{app_name}' in project '{project_name}'.", file=sys.stderr)
+        sys.exit(1)
+    print(f">>> === CHECKING THE MOD PATH {mod_path} === <<<")
+    os.makedirs(mod_path, exist_ok=True)
+    open(os.path.join(mod_path, "__init__.py"), "w").close()
+    print(f"Module '{mod_name}' created successfully inside app '{app_name}' in project '{project_name}'.")
