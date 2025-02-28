@@ -61,6 +61,8 @@ def create_django_app(project_name, app_name, base_dir):
     check_abs_app_mod_path = os.path.join(check_abs_app_path, def_mod_name)
     if not os.path.exists(check_abs_app_mod_path):
         create_custom_module(project_name, app_name, app_mod_name, base_dir)
+
+    generate_app_urls(std_app_name, app_name, project_path)
     print(f"Django app '{std_app_name}' created successfully.")
 ########################################### MODULE RELATED ########################################################
 def create_custom_module(project_name, app_name, mod_name, base_dir):
@@ -91,19 +93,19 @@ def create_custom_module(project_name, app_name, mod_name, base_dir):
         create_empty_file(os.path.join(check_abs_def_mod_path, f"all_view_imports.py"))
         create_empty_file(os.path.join(check_abs_def_mod_path, f"all_form_imports.py"))
         # update the urls_app.py of the app based on the modules
-        generate_urls(check_abs_def_mod_path, "urls_app")
+        generate_urls(check_abs_app_path, "urls_app")
         print(f"Django module '{std_mod_name}' created successfully.")
     app_mod_name = f"{MOD_PREFIX}_{app_name}"
     check_abs_app_mod_path = os.path.join(check_abs_app_path, app_mod_name)
     if not os.path.exists(check_abs_app_mod_path):
         create_directory(check_abs_app_mod_path)        
         create_empty_file(os.path.join(check_abs_app_mod_path, "__init__.py"))
-        create_empty_file(os.path.join(check_abs_app_mod_path, f"urls_{mod_name}.py")) 
+        create_empty_file(os.path.join(check_abs_app_mod_path, f"urls_{app_name}.py")) 
         create_empty_file(os.path.join(check_abs_app_mod_path, f"models_{mod_name}.py"))
         create_empty_file(os.path.join(check_abs_app_mod_path, f"views_{mod_name}.py"))
         create_empty_file(os.path.join(check_abs_app_mod_path, f"forms_{mod_name}.py"))
         # update the urls_app.py of the app based on the modules
-        generate_urls(check_abs_def_mod_path, "urls_app")
+        generate_urls(check_abs_app_path, "urls_app")
         print(f"Django module '{app_mod_name}' created successfully.")
 
     check_abs_new_mod_path = os.path.join(check_abs_app_path, std_mod_name)
@@ -115,7 +117,7 @@ def create_custom_module(project_name, app_name, mod_name, base_dir):
         create_empty_file(os.path.join(check_abs_new_mod_path, f"views_{mod_name}.py"))
         create_empty_file(os.path.join(check_abs_new_mod_path, f"forms_{mod_name}.py"))
         # update the urls_app.py of the app based on the modules
-        generate_urls(check_abs_def_mod_path, "urls_app")
+        generate_urls(check_abs_app_path, "urls_app")
         print(f"Django module '{std_mod_name}' created successfully.")
     
 

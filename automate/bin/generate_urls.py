@@ -1,13 +1,34 @@
 import os
 import argparse
 
+
+def generate_app_urls(app_name, url_name, base_dir):
+    """Automatically create `app_urls.py` inside each app."""
+    app_path = os.path.join(base_dir, app_name)
+    urls_file = os.path.join(app_path, "app_urls.py")
+
+    if not os.path.exists(urls_file):  # Only create if it doesn't exist
+        content = f"""from django.urls import include, path
+
+urlpatterns = [
+    path('{url_name}/', include('{app_name}.mod_app.urls_app')),
+]
+"""
+        with open(urls_file, "w") as f:
+            f.write(content)
+
+        #print(f"✅ Created {urls_file}")
+    else:
+        print(f"⚠️ {urls_file} already exists, skipping.")
+
+
 def generate_urls(app_directory, urls_app_filename):
     # Ensure the app directory path is absolute
     app_directory = os.path.abspath(app_directory)
     # Extract the app name from the absolute path
     app_name = os.path.basename(app_directory)
     # Path to the file that will include all module URLs
-    urls_file_path = os.path.join(app_directory, f"{urls_app_filename}.py")
+    urls_file_path = os.path.join(app_directory, 'mod_app' , f"{urls_app_filename}.py")
     
     with open(urls_file_path, 'w') as urls_file:
         urls_file.write("from django.urls import include, path\n\n")
