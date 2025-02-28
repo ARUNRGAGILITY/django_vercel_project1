@@ -40,6 +40,8 @@ def create_django_app(project_name, app_name, base_dir):
     project_path = os.path.join(abs_project_base_dir, project_name)
     std_app_name = f"{APP_PREFIX}_{app_name}" if not app_name.startswith(f"{APP_PREFIX}_") else app_name
     check_abs_app_path = os.path.join(project_path, std_app_name)
+    if not os.path.exists(project_path):
+        create_django_project(project_name, base_dir)
     if os.path.exists(check_abs_app_path):
         return
     subprocess.run(["python", "manage.py", "startapp", std_app_name], cwd=project_path, check=True)
@@ -90,6 +92,7 @@ def create_custom_module(project_name, app_name, mod_name, base_dir):
         create_empty_file(os.path.join(check_abs_def_mod_path, f"all_form_imports.py"))
         # update the urls_app.py of the app based on the modules
         generate_urls(check_abs_def_mod_path, "urls_app")
+        print(f"Django module '{std_mod_name}' created successfully.")
     app_mod_name = f"{MOD_PREFIX}_{app_name}"
     check_abs_app_mod_path = os.path.join(check_abs_app_path, app_mod_name)
     if not os.path.exists(check_abs_app_mod_path):
@@ -101,6 +104,7 @@ def create_custom_module(project_name, app_name, mod_name, base_dir):
         create_empty_file(os.path.join(check_abs_app_mod_path, f"forms_{mod_name}.py"))
         # update the urls_app.py of the app based on the modules
         generate_urls(check_abs_def_mod_path, "urls_app")
+        print(f"Django module '{app_mod_name}' created successfully.")
 
     check_abs_new_mod_path = os.path.join(check_abs_app_path, std_mod_name)
     if not os.path.exists(check_abs_new_mod_path):
@@ -112,8 +116,8 @@ def create_custom_module(project_name, app_name, mod_name, base_dir):
         create_empty_file(os.path.join(check_abs_new_mod_path, f"forms_{mod_name}.py"))
         # update the urls_app.py of the app based on the modules
         generate_urls(check_abs_def_mod_path, "urls_app")
-
-    print(f"Django module '{std_mod_name}' created successfully.")
+        print(f"Django module '{std_mod_name}' created successfully.")
+    
 
 ######################################################################################################################
 def delete_django_project(project_name):
